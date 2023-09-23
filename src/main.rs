@@ -1,4 +1,4 @@
-use std::{io::stdin, process::exit, rc::Rc};
+use std::{io::stdin, rc::Rc};
 
 use serde::Deserialize;
 
@@ -131,9 +131,11 @@ enum Term {
     Call(Call),
 }
 
+type KaykompilerFn = dyn Fn(&mut Runtime, Vec<Val>) -> Result<Val, KaykompilerError>;
+
 #[derive(Clone)]
 enum Val {
-    Function(Rc<dyn Fn(&mut Runtime, Vec<Val>) -> Result<Val, KaykompilerError>>),
+    Function(Rc<KaykompilerFn>),
     Bool(bool),
     Str(String),
     Int(i32),
@@ -385,14 +387,10 @@ fn main() {
 
     let mut runtime = Runtime::new();
 
-    match runtime.run(program) {
-        Err(e) => {
-            eprintln!(
-                "ERROR: {} {}:{}:{}",
-                e.message, e.location.filename, e.location.start, e.location.end
-            );
-            exit(1);
-        }
-        _ => {}
+    if let Err(e) = runtime.run(program) {
+        eprintln!(
+            "ERROR: {} {}:{}:{}",
+            e.message, e.location.filename, e.location.start, e.location.end
+        );
     }
 }
