@@ -131,11 +131,15 @@ enum Term {
     Call(Call),
 }
 
-type KaykompilerFn = dyn Fn(&mut Runtime, Vec<Val>) -> Result<Val, KaykompilerError>;
+#[derive(Debug, Clone)]
+struct Func {
+    parameters: Vec<Parameter>,
+    value: Rc<Term>,
+}
 
 #[derive(Clone)]
 enum Val {
-    Function(Rc<KaykompilerFn>),
+    Function(Func),
     Bool(bool),
     Str(String),
     Int(i32),
@@ -303,7 +307,19 @@ impl Runtime {
                 BinaryOp::Lte => todo!(),
                 BinaryOp::Gte => todo!(),
                 BinaryOp::And => todo!(),
-                BinaryOp::Or => todo!(),
+                BinaryOp::Or => {
+                    let lhs = self.evaluate(*term.lhs);
+                    let rhs = self.evaluate(*term.rhs);
+
+                    match (lhs, rhs) {
+                        (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l || r)),
+                        (Err(e), _) | (_, Err(e)) => Err(e),
+                        _ => Err(KaykompilerError::new(
+                            "Tipo invalido.".into(),
+                            term.location,
+                        )),
+                    }
+                }
             },
             Term::Let(term) => {
                 let value = self.evaluate(*term.value)?;
@@ -311,30 +327,10 @@ impl Runtime {
                 self.evaluate(*term.next)
             }
             Term::Function(term) => {
-                let term = Rc::new(term);
-
-                let function = Rc::new(move |runtime: &mut Runtime, mut args: Vec<Val>| {
-                    if args.len() != term.parameters.len() {
-                        return Err(KaykompilerError::new(
-                            "Número de argumentos inválido.".into(),
-                            term.parameters.first().unwrap().location.clone(),
-                        ));
-                    }
-
-                    for parameter in term.parameters.iter() {
-                        runtime
-                            .env
-                            .push((parameter.text.clone(), args.pop().unwrap()));
-                    }
-
-                    let result = runtime.evaluate(*term.value.clone());
-
-                    for _ in term.parameters.iter() {
-                        runtime.env.pop();
-                    }
-
-                    result
-                });
+                let function = Func {
+                    parameters: term.parameters,
+                    value: Rc::new(*term.value),
+                };
 
                 Ok(Val::Function(function))
             }
@@ -371,7 +367,28 @@ impl Runtime {
                 }
 
                 match callee {
-                    Val::Function(function) => function(self, arguments),
+                    Val::Function(function) => {
+                        if arguments.len() != function.parameters.len() {
+                            return Err(KaykompilerError::new(
+                                "Número de argumentos inválido.".into(),
+                                function.parameters.first().unwrap().location.clone(),
+                            ));
+                        }
+
+                        for (parameter, argument) in
+                            function.parameters.iter().zip(arguments.iter())
+                        {
+                            self.env.push((parameter.text.clone(), argument.clone()));
+                        }
+
+                        let result = self.evaluate((*function.value).clone());
+
+                        for _ in function.parameters.iter() {
+                            self.env.pop();
+                        }
+
+                        result
+                    }
                     _ => Err(KaykompilerError::new(
                         "Chamada inválida.".into(),
                         term.location,
