@@ -1,4 +1,4 @@
-use std::{io::stdin, rc::Rc};
+use std::io::stdin;
 
 use serde::Deserialize;
 
@@ -134,10 +134,10 @@ enum Term {
 #[derive(Debug, Clone)]
 struct Func {
     parameters: Vec<Parameter>,
-    value: Rc<Term>,
+    value: Box<Term>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Val {
     Function(Func),
     Bool(bool),
@@ -329,7 +329,7 @@ impl Runtime {
             Term::Function(term) => {
                 let function = Func {
                     parameters: term.parameters,
-                    value: Rc::new(*term.value),
+                    value: term.value,
                 };
 
                 Ok(Val::Function(function))
@@ -361,31 +361,27 @@ impl Runtime {
             Term::Call(term) => {
                 let callee = self.evaluate(*term.callee)?;
 
-                let mut arguments = vec![];
-                for argument in term.arguments {
-                    arguments.push(self.evaluate(argument)?);
-                }
-
                 match callee {
-                    Val::Function(function) => {
-                        if arguments.len() != function.parameters.len() {
+                    Val::Function(func) => {
+                        if term.arguments.len() != func.parameters.len() {
                             return Err(KaykompilerError::new(
                                 "Número de argumentos inválido.".into(),
-                                function.parameters.first().unwrap().location.clone(),
+                                func.parameters.first().unwrap().location.clone(),
                             ));
                         }
 
+                        let original_stack_size = self.env.len();
+
                         for (parameter, argument) in
-                            function.parameters.iter().zip(arguments.iter())
+                            func.parameters.iter().zip(term.arguments.into_iter())
                         {
-                            self.env.push((parameter.text.clone(), argument.clone()));
+                            let arg = self.evaluate(argument)?;
+                            let paramter = parameter.text.clone();
+                            self.env.push((paramter, arg));
                         }
 
-                        let result = self.evaluate((*function.value).clone());
-
-                        for _ in function.parameters.iter() {
-                            self.env.pop();
-                        }
+                        let result = self.evaluate((*func.value).clone());
+                        self.env.truncate(original_stack_size);
 
                         result
                     }
