@@ -1,4 +1,4 @@
-use std::io::stdin;
+use std::{io::stdin, time::Instant};
 
 use serde::Deserialize;
 
@@ -79,7 +79,6 @@ enum BinaryOp {
 #[derive(Debug, Deserialize, Clone)]
 struct Parameter {
     text: String,
-    location: Location,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -366,21 +365,20 @@ impl Runtime {
                         if term.arguments.len() != func.parameters.len() {
                             return Err(KaykompilerError::new(
                                 "Número de argumentos inválido.".into(),
-                                func.parameters.first().unwrap().location.clone(),
+                                term.location,
                             ));
                         }
 
                         let original_stack_size = self.env.len();
 
                         for (parameter, argument) in
-                            func.parameters.iter().zip(term.arguments.into_iter())
+                            func.parameters.into_iter().zip(term.arguments.into_iter())
                         {
                             let arg = self.evaluate(argument)?;
-                            let paramter = parameter.text.clone();
-                            self.env.push((paramter, arg));
+                            self.env.push((parameter.text, arg));
                         }
 
-                        let result = self.evaluate((*func.value).clone());
+                        let result = self.evaluate(*func.value);
                         self.env.truncate(original_stack_size);
 
                         result
@@ -400,10 +398,14 @@ fn main() {
 
     let mut runtime = Runtime::new();
 
+    let instant = Instant::now();
+
     if let Err(e) = runtime.run(program) {
         eprintln!(
             "ERROR: {} {}:{}:{}",
             e.message, e.location.filename, e.location.start, e.location.end
         );
     }
+
+    println!("Elapsed: {:?}", instant.elapsed());
 }
