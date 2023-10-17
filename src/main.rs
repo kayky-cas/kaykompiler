@@ -417,9 +417,7 @@ impl Runtime {
 
                 let original_stack_size = self.env.len();
 
-                for (parameter, argument) in
-                    func.parameters.into_iter().zip(term.arguments.into_iter())
-                {
+                for (parameter, argument) in func.parameters.into_iter().zip(term.arguments) {
                     let arg = self.evaluate(argument)?;
                     self.env.push((parameter.text, arg));
                 }
