@@ -2,6 +2,32 @@ use std::{io::stdin, process::exit, time::Instant};
 
 use serde::Deserialize;
 
+macro_rules! binary_op {
+    ($term:ident, $lhs:ident $op:tt $rhs:ident) => {
+        match ($lhs, $rhs) {
+            (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l $op r)),
+            (Err(e), _) | (_, Err(e)) => Err(e),
+            _ => Err(KaykompilerError::new(
+                "Tipo invalido.".into(),
+                $term.location,
+            )),
+        }
+    }
+}
+
+macro_rules! binary_op_int {
+    ($term:ident, $lhs:ident $op:tt $rhs:ident) => {
+        match ($lhs, $rhs) {
+            (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l $op r)),
+            (Err(e), _) | (_, Err(e)) => Err(e),
+            _ => Err(KaykompilerError::new(
+                "Tipo invalido.".into(),
+                $term.location,
+            )),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct Program {
     expression: Term,
@@ -250,55 +276,12 @@ impl Runtime {
                     term.location,
                 )),
             },
-            BinaryOp::Lt => match (lhs, rhs) {
-                (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l < r)),
-                (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
-                    "Tipo invalido.".into(),
-                    term.location,
-                )),
-            },
-            BinaryOp::Gt => match (lhs, rhs) {
-                (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l > r)),
-                (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
-                    "Tipo invalido.".into(),
-                    term.location,
-                )),
-            },
-            BinaryOp::Lte => match (lhs, rhs) {
-                (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l <= r)),
-                (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
-                    "Tipo invalido.".into(),
-                    term.location,
-                )),
-            },
-            BinaryOp::Gte => match (lhs, rhs) {
-                (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l >= r)),
-                (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
-                    "Tipo invalido.".into(),
-                    term.location,
-                )),
-            },
-
-            BinaryOp::And => match (lhs, rhs) {
-                (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l && r)),
-                (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
-                    "Tipo invalido.".into(),
-                    term.location,
-                )),
-            },
-            BinaryOp::Or => match (lhs, rhs) {
-                (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l || r)),
-                (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
-                    "Tipo invalido.".into(),
-                    term.location,
-                )),
-            },
+            BinaryOp::Lt => binary_op_int!(term, lhs < rhs),
+            BinaryOp::Gt => binary_op_int!(term, lhs > rhs),
+            BinaryOp::Lte => binary_op_int!(term, lhs <= rhs),
+            BinaryOp::Gte => binary_op_int!(term, lhs >= rhs),
+            BinaryOp::And => binary_op!(term, lhs && rhs),
+            BinaryOp::Or => binary_op!(term, lhs || rhs),
         }
     }
 
