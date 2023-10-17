@@ -4,9 +4,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 struct Program {
-    // name: String,
     expression: Term,
-    // location: Location,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -31,13 +29,11 @@ impl KaykompilerError {
 #[derive(Debug, Deserialize, Clone)]
 struct Str {
     value: String,
-    // location: Location,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 struct Int {
     value: i32,
-    // location: Location,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -302,10 +298,59 @@ impl Runtime {
                         )),
                     }
                 }
-                BinaryOp::Gt => todo!(),
-                BinaryOp::Lte => todo!(),
-                BinaryOp::Gte => todo!(),
-                BinaryOp::And => todo!(),
+                BinaryOp::Gt => {
+                    let lhs = self.evaluate(*term.lhs);
+                    let rhs = self.evaluate(*term.rhs);
+
+                    match (lhs, rhs) {
+                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l > r)),
+                        (Err(e), _) | (_, Err(e)) => Err(e),
+                        _ => Err(KaykompilerError::new(
+                            "Tipo invalido.".into(),
+                            term.location,
+                        )),
+                    }
+                }
+                BinaryOp::Lte => {
+                    let lhs = self.evaluate(*term.lhs);
+                    let rhs = self.evaluate(*term.rhs);
+
+                    match (lhs, rhs) {
+                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l <= r)),
+                        (Err(e), _) | (_, Err(e)) => Err(e),
+                        _ => Err(KaykompilerError::new(
+                            "Tipo invalido.".into(),
+                            term.location,
+                        )),
+                    }
+                }
+                BinaryOp::Gte => {
+                    let lhs = self.evaluate(*term.lhs);
+                    let rhs = self.evaluate(*term.rhs);
+
+                    match (lhs, rhs) {
+                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l >= r)),
+                        (Err(e), _) | (_, Err(e)) => Err(e),
+                        _ => Err(KaykompilerError::new(
+                            "Tipo invalido.".into(),
+                            term.location,
+                        )),
+                    }
+                }
+
+                BinaryOp::And => {
+                    let lhs = self.evaluate(*term.lhs);
+                    let rhs = self.evaluate(*term.rhs);
+
+                    match (lhs, rhs) {
+                        (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l && r)),
+                        (Err(e), _) | (_, Err(e)) => Err(e),
+                        _ => Err(KaykompilerError::new(
+                            "Tipo invalido.".into(),
+                            term.location,
+                        )),
+                    }
+                }
                 BinaryOp::Or => {
                     let lhs = self.evaluate(*term.lhs);
                     let rhs = self.evaluate(*term.rhs);
