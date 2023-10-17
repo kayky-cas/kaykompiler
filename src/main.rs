@@ -154,286 +154,300 @@ impl Runtime {
         self.evaluate(program.expression)
     }
 
+    fn evaluate_print(&mut self, term: Print) -> Result<Val, KaykompilerError> {
+        let val = self.evaluate(*term.value);
+
+        match val {
+            Ok(Val::Str(val)) => println!("{val}"),
+            Ok(Val::Int(val)) => println!("{val}"),
+            Err(err) => return Err(err),
+            _ => {
+                return Err(KaykompilerError::new(
+                    "Tipo inválido para print".into(),
+                    term.location,
+                ))
+            }
+        };
+
+        Ok(Val::Void)
+    }
+
+    fn evaluate_binary(&mut self, term: Binary) -> Result<Val, KaykompilerError> {
+        match term.op {
+            BinaryOp::Add => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Str(l)), Ok(Val::Str(r))) => Ok(Val::Str(l + &r)),
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l + r)),
+                    (Ok(Val::Str(l)), Ok(Val::Int(r))) => Ok(Val::Str(l + &r.to_string())),
+                    (Ok(Val::Int(l)), Ok(Val::Str(r))) => Ok(Val::Str(l.to_string() + &r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Operador inválido para soma.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Sub => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l - r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Operador inválido para subtração.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Mul => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l * r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Operador inválido para subtração.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Rem => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l % r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Operador inválido para resto.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Div => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => {
+                        if r == 0 {
+                            Err(KaykompilerError::new(
+                                "Divisão por zero é inválida.".into(),
+                                term.location,
+                            ))
+                        } else {
+                            Ok(Val::Int(l / r))
+                        }
+                    }
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Operador inválido para divisão.".into(),
+                        term.location,
+                    )),
+                }
+            }
+
+            BinaryOp::Eq => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l == r)),
+                    (Ok(Val::Str(l)), Ok(Val::Str(r))) => Ok(Val::Bool(l == r)),
+                    (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l == r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Igualdade inválida.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Neq => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l != r)),
+                    (Ok(Val::Str(l)), Ok(Val::Str(r))) => Ok(Val::Bool(l != r)),
+                    (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l != r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Não igualdade inválida.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Lt => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l < r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Tipo invalido.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Gt => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l > r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Tipo invalido.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Lte => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l <= r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Tipo invalido.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Gte => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l >= r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Tipo invalido.".into(),
+                        term.location,
+                    )),
+                }
+            }
+
+            BinaryOp::And => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l && r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Tipo invalido.".into(),
+                        term.location,
+                    )),
+                }
+            }
+            BinaryOp::Or => {
+                let lhs = self.evaluate(*term.lhs);
+                let rhs = self.evaluate(*term.rhs);
+
+                match (lhs, rhs) {
+                    (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l || r)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                    _ => Err(KaykompilerError::new(
+                        "Tipo invalido.".into(),
+                        term.location,
+                    )),
+                }
+            }
+        }
+    }
+
+    fn evaluate_let(&mut self, term: Let) -> Result<Val, KaykompilerError> {
+        let value = self.evaluate(*term.value)?;
+        self.env.push((term.name.text, value));
+        self.evaluate(*term.next)
+    }
+
+    fn evaluate_function(&mut self, term: Function) -> Result<Val, KaykompilerError> {
+        Ok(Val::Function(Func {
+            parameters: term.parameters,
+            value: term.value,
+        }))
+    }
+
+    fn evaluate_if(&mut self, term: If) -> Result<Val, KaykompilerError> {
+        let condition = self.evaluate(*term.condition)?;
+
+        match condition {
+            Val::Bool(true) => self.evaluate(*term.then),
+            Val::Bool(false) => self.evaluate(*term.otherwise),
+            _ => Err(KaykompilerError::new(
+                "Condição inválida para if.".into(),
+                term.location,
+            )),
+        }
+    }
+
+    fn evaluate_var(&mut self, term: Var) -> Result<Val, KaykompilerError> {
+        for (name, value) in self.env.iter().rev() {
+            if name == &term.text {
+                return Ok(value.clone());
+            }
+        }
+
+        Err(KaykompilerError::new(
+            "Variável não encontrada.".into(),
+            term.location,
+        ))
+    }
+
+    fn evaluate_call(&mut self, term: Call) -> Result<Val, KaykompilerError> {
+        let callee = self.evaluate(*term.callee)?;
+
+        match callee {
+            Val::Function(func) => {
+                if term.arguments.len() != func.parameters.len() {
+                    return Err(KaykompilerError::new(
+                        "Número de argumentos inválido.".into(),
+                        term.location,
+                    ));
+                }
+
+                let original_stack_size = self.env.len();
+
+                for (parameter, argument) in
+                    func.parameters.into_iter().zip(term.arguments.into_iter())
+                {
+                    let arg = self.evaluate(argument)?;
+                    self.env.push((parameter.text, arg));
+                }
+
+                let result = self.evaluate(*func.value);
+                self.env.truncate(original_stack_size);
+
+                result
+            }
+            _ => Err(KaykompilerError::new(
+                "Chamada inválida.".into(),
+                term.location,
+            )),
+        }
+    }
+
     fn evaluate(&mut self, term: Term) -> Result<Val, KaykompilerError> {
         match term {
             Term::Int(term) => Ok(Val::Int(term.value)),
             Term::Str(term) => Ok(Val::Str(term.value)),
             Term::Bool(term) => Ok(Val::Bool(term.value)),
-            Term::Print(term) => {
-                let val = self.evaluate(*term.value);
-
-                match val {
-                    Ok(Val::Str(val)) => println!("{val}"),
-                    Ok(Val::Int(val)) => println!("{val}"),
-                    Err(err) => return Err(err),
-                    _ => {
-                        return Err(KaykompilerError::new(
-                            "Tipo inválido para print".into(),
-                            term.location,
-                        ))
-                    }
-                };
-
-                Ok(Val::Void)
-            }
-            Term::Binary(term) => match term.op {
-                BinaryOp::Add => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Str(l)), Ok(Val::Str(r))) => Ok(Val::Str(l + &r)),
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l + r)),
-                        (Ok(Val::Str(l)), Ok(Val::Int(r))) => Ok(Val::Str(l + &r.to_string())),
-                        (Ok(Val::Int(l)), Ok(Val::Str(r))) => Ok(Val::Str(l.to_string() + &r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Operador inválido para soma.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Sub => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l - r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Operador inválido para subtração.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Mul => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l * r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Operador inválido para subtração.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Rem => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l % r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Operador inválido para resto.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Div => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => {
-                            if r == 0 {
-                                Err(KaykompilerError::new(
-                                    "Divisão por zero é inválida.".into(),
-                                    term.location,
-                                ))
-                            } else {
-                                Ok(Val::Int(l / r))
-                            }
-                        }
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Operador inválido para divisão.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-
-                BinaryOp::Eq => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l == r)),
-                        (Ok(Val::Str(l)), Ok(Val::Str(r))) => Ok(Val::Bool(l == r)),
-                        (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l == r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Igualdade inválida.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Neq => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l != r)),
-                        (Ok(Val::Str(l)), Ok(Val::Str(r))) => Ok(Val::Bool(l != r)),
-                        (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l != r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Não igualdade inválida.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Lt => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l < r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Tipo invalido.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Gt => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l > r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Tipo invalido.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Lte => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l <= r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Tipo invalido.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Gte => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l >= r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Tipo invalido.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-
-                BinaryOp::And => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l && r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Tipo invalido.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-                BinaryOp::Or => {
-                    let lhs = self.evaluate(*term.lhs);
-                    let rhs = self.evaluate(*term.rhs);
-
-                    match (lhs, rhs) {
-                        (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l || r)),
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Err(KaykompilerError::new(
-                            "Tipo invalido.".into(),
-                            term.location,
-                        )),
-                    }
-                }
-            },
-            Term::Let(term) => {
-                let value = self.evaluate(*term.value)?;
-                self.env.push((term.name.text, value));
-                self.evaluate(*term.next)
-            }
-            Term::Function(term) => {
-                let function = Func {
-                    parameters: term.parameters,
-                    value: term.value,
-                };
-
-                Ok(Val::Function(function))
-            }
-            Term::If(term) => {
-                let condition = self.evaluate(*term.condition)?;
-
-                match condition {
-                    Val::Bool(true) => self.evaluate(*term.then),
-                    Val::Bool(false) => self.evaluate(*term.otherwise),
-                    _ => Err(KaykompilerError::new(
-                        "Condição inválida para if.".into(),
-                        term.location,
-                    )),
-                }
-            }
-            Term::Var(term) => {
-                for (name, value) in self.env.iter().rev() {
-                    if name == &term.text {
-                        return Ok(value.clone());
-                    }
-                }
-
-                Err(KaykompilerError::new(
-                    "Variável não encontrada.".into(),
-                    term.location,
-                ))
-            }
-            Term::Call(term) => {
-                let callee = self.evaluate(*term.callee)?;
-
-                match callee {
-                    Val::Function(func) => {
-                        if term.arguments.len() != func.parameters.len() {
-                            return Err(KaykompilerError::new(
-                                "Número de argumentos inválido.".into(),
-                                term.location,
-                            ));
-                        }
-
-                        let original_stack_size = self.env.len();
-
-                        for (parameter, argument) in
-                            func.parameters.into_iter().zip(term.arguments.into_iter())
-                        {
-                            let arg = self.evaluate(argument)?;
-                            self.env.push((parameter.text, arg));
-                        }
-
-                        let result = self.evaluate(*func.value);
-                        self.env.truncate(original_stack_size);
-
-                        result
-                    }
-                    _ => Err(KaykompilerError::new(
-                        "Chamada inválida.".into(),
-                        term.location,
-                    )),
-                }
-            }
+            Term::Print(term) => self.evaluate_print(term),
+            Term::Binary(term) => self.evaluate_binary(term),
+            Term::Let(term) => self.evaluate_let(term),
+            Term::Function(term) => self.evaluate_function(term),
+            Term::If(term) => self.evaluate_if(term),
+            Term::Var(term) => self.evaluate_var(term),
+            Term::Call(term) => self.evaluate_call(term),
         }
     }
 }
