@@ -7,7 +7,7 @@ macro_rules! binary_op {
         match ($lhs, $rhs) {
             (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l $op r)),
             (Err(e), _) | (_, Err(e)) => Err(e),
-            _ => Err(KaykompilerError::new(
+            _ => Err(CompilerError::new(
                 "Tipo invalido.".into(),
                 $term.location,
             )),
@@ -20,7 +20,7 @@ macro_rules! binary_op_int {
         match ($lhs, $rhs) {
             (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Bool(l $op r)),
             (Err(e), _) | (_, Err(e)) => Err(e),
-            _ => Err(KaykompilerError::new(
+            _ => Err(CompilerError::new(
                 "Tipo invalido.".into(),
                 $term.location,
             )),
@@ -41,12 +41,12 @@ struct Location {
 }
 
 #[derive(Debug, Deserialize)]
-struct KaykompilerError {
+struct CompilerError {
     message: String,
     location: Location,
 }
 
-impl KaykompilerError {
+impl CompilerError {
     fn new(message: String, location: Location) -> Self {
         Self { message, location }
     }
@@ -176,11 +176,11 @@ impl Runtime {
         Self { env: vec![] }
     }
 
-    fn run(&mut self, program: Program) -> Result<Val, KaykompilerError> {
+    fn run(&mut self, program: Program) -> Result<Val, CompilerError> {
         self.evaluate(program.expression)
     }
 
-    fn evaluate_print(&mut self, term: Print) -> Result<Val, KaykompilerError> {
+    fn evaluate_print(&mut self, term: Print) -> Result<Val, CompilerError> {
         let val = self.evaluate(*term.value);
 
         match val {
@@ -188,7 +188,7 @@ impl Runtime {
             Ok(Val::Int(val)) => println!("{val}"),
             Err(err) => return Err(err),
             _ => {
-                return Err(KaykompilerError::new(
+                return Err(CompilerError::new(
                     "Tipo inválido para print".into(),
                     term.location,
                 ))
@@ -198,7 +198,7 @@ impl Runtime {
         Ok(Val::Void)
     }
 
-    fn evaluate_binary(&mut self, term: Binary) -> Result<Val, KaykompilerError> {
+    fn evaluate_binary(&mut self, term: Binary) -> Result<Val, CompilerError> {
         let lhs = self.evaluate(*term.lhs);
         let rhs = self.evaluate(*term.rhs);
 
@@ -209,7 +209,7 @@ impl Runtime {
                 (Ok(Val::Str(l)), Ok(Val::Int(r))) => Ok(Val::Str(l + &r.to_string())),
                 (Ok(Val::Int(l)), Ok(Val::Str(r))) => Ok(Val::Str(l.to_string() + &r)),
                 (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
+                _ => Err(CompilerError::new(
                     "Operador inválido para soma.".into(),
                     term.location,
                 )),
@@ -217,7 +217,7 @@ impl Runtime {
             BinaryOp::Sub => match (lhs, rhs) {
                 (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l - r)),
                 (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
+                _ => Err(CompilerError::new(
                     "Operador inválido para subtração.".into(),
                     term.location,
                 )),
@@ -225,7 +225,7 @@ impl Runtime {
             BinaryOp::Mul => match (lhs, rhs) {
                 (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l * r)),
                 (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
+                _ => Err(CompilerError::new(
                     "Operador inválido para subtração.".into(),
                     term.location,
                 )),
@@ -233,7 +233,7 @@ impl Runtime {
             BinaryOp::Rem => match (lhs, rhs) {
                 (Ok(Val::Int(l)), Ok(Val::Int(r))) => Ok(Val::Int(l % r)),
                 (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
+                _ => Err(CompilerError::new(
                     "Operador inválido para resto.".into(),
                     term.location,
                 )),
@@ -241,7 +241,7 @@ impl Runtime {
             BinaryOp::Div => match (lhs, rhs) {
                 (Ok(Val::Int(l)), Ok(Val::Int(r))) => {
                     if r == 0 {
-                        Err(KaykompilerError::new(
+                        Err(CompilerError::new(
                             "Divisão por zero é inválida.".into(),
                             term.location,
                         ))
@@ -250,7 +250,7 @@ impl Runtime {
                     }
                 }
                 (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
+                _ => Err(CompilerError::new(
                     "Operador inválido para divisão.".into(),
                     term.location,
                 )),
@@ -261,7 +261,7 @@ impl Runtime {
                 (Ok(Val::Str(l)), Ok(Val::Str(r))) => Ok(Val::Bool(l == r)),
                 (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l == r)),
                 (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
+                _ => Err(CompilerError::new(
                     "Igualdade inválida.".into(),
                     term.location,
                 )),
@@ -271,7 +271,7 @@ impl Runtime {
                 (Ok(Val::Str(l)), Ok(Val::Str(r))) => Ok(Val::Bool(l != r)),
                 (Ok(Val::Bool(l)), Ok(Val::Bool(r))) => Ok(Val::Bool(l != r)),
                 (Err(e), _) | (_, Err(e)) => Err(e),
-                _ => Err(KaykompilerError::new(
+                _ => Err(CompilerError::new(
                     "Não igualdade inválida.".into(),
                     term.location,
                 )),
@@ -285,49 +285,49 @@ impl Runtime {
         }
     }
 
-    fn evaluate_let(&mut self, term: Let) -> Result<Val, KaykompilerError> {
+    fn evaluate_let(&mut self, term: Let) -> Result<Val, CompilerError> {
         let value = self.evaluate(*term.value)?;
         self.env.push((term.name.text, value));
         self.evaluate(*term.next)
     }
 
-    fn evaluate_function(&mut self, term: Function) -> Result<Val, KaykompilerError> {
+    fn evaluate_function(&mut self, term: Function) -> Result<Val, CompilerError> {
         Ok(Val::Function(Func {
             parameters: term.parameters,
             value: term.value,
         }))
     }
 
-    fn evaluate_if(&mut self, term: If) -> Result<Val, KaykompilerError> {
+    fn evaluate_if(&mut self, term: If) -> Result<Val, CompilerError> {
         let condition = self.evaluate(*term.condition)?;
 
         match condition {
             Val::Bool(true) => self.evaluate(*term.then),
             Val::Bool(false) => self.evaluate(*term.otherwise),
-            _ => Err(KaykompilerError::new(
+            _ => Err(CompilerError::new(
                 "Condição inválida para if.".into(),
                 term.location,
             )),
         }
     }
 
-    fn evaluate_var(&mut self, term: Var) -> Result<Val, KaykompilerError> {
+    fn evaluate_var(&mut self, term: Var) -> Result<Val, CompilerError> {
         for (name, value) in self.env.iter().rev() {
             if name == &term.text {
                 return Ok(value.clone());
             }
         }
 
-        Err(KaykompilerError::new(
+        Err(CompilerError::new(
             "Variável não encontrada.".into(),
             term.location,
         ))
     }
 
-    fn evaluate_call(&mut self, term: Call) -> Result<Val, KaykompilerError> {
+    fn evaluate_call(&mut self, term: Call) -> Result<Val, CompilerError> {
         if let Val::Function(func) = self.evaluate(*term.callee)? {
             if term.arguments.len() != func.parameters.len() {
-                return Err(KaykompilerError::new(
+                return Err(CompilerError::new(
                     "Número de argumentos inválido.".into(),
                     term.location,
                 ));
@@ -345,14 +345,14 @@ impl Runtime {
 
             result
         } else {
-            Err(KaykompilerError::new(
+            Err(CompilerError::new(
                 "Chamada inválida.".into(),
                 term.location,
             ))
         }
     }
 
-    fn evaluate(&mut self, term: Term) -> Result<Val, KaykompilerError> {
+    fn evaluate(&mut self, term: Term) -> Result<Val, CompilerError> {
         match term {
             Term::Int(term) => Ok(Val::Int(term.value)),
             Term::Str(term) => Ok(Val::Str(term.value)),
