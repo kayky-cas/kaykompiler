@@ -325,33 +325,30 @@ impl Runtime {
     }
 
     fn evaluate_call(&mut self, term: Call) -> Result<Val, KaykompilerError> {
-        let callee = self.evaluate(*term.callee)?;
-
-        match callee {
-            Val::Function(func) => {
-                if term.arguments.len() != func.parameters.len() {
-                    return Err(KaykompilerError::new(
-                        "Número de argumentos inválido.".into(),
-                        term.location,
-                    ));
-                }
-
-                let original_stack_size = self.env.len();
-
-                for (parameter, argument) in func.parameters.into_iter().zip(term.arguments) {
-                    let argument = self.evaluate(argument)?;
-                    self.env.push((parameter.text, argument));
-                }
-
-                let result = self.evaluate(*func.value);
-                self.env.truncate(original_stack_size);
-
-                result
+        if let Val::Function(func) = self.evaluate(*term.callee)? {
+            if term.arguments.len() != func.parameters.len() {
+                return Err(KaykompilerError::new(
+                    "Número de argumentos inválido.".into(),
+                    term.location,
+                ));
             }
-            _ => Err(KaykompilerError::new(
+
+            let original_stack_size = self.env.len();
+
+            for (parameter, argument) in func.parameters.into_iter().zip(term.arguments) {
+                let argument = self.evaluate(argument)?;
+                self.env.push((parameter.text, argument));
+            }
+
+            let result = self.evaluate(*func.value);
+            self.env.truncate(original_stack_size);
+
+            result
+        } else {
+            Err(KaykompilerError::new(
                 "Chamada inválida.".into(),
                 term.location,
-            )),
+            ))
         }
     }
 
