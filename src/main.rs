@@ -1,4 +1,4 @@
-use std::{io::stdin, time::Instant};
+use std::{io::stdin, process::exit, time::Instant};
 
 use serde::Deserialize;
 
@@ -450,6 +450,7 @@ fn main() {
             "ERROR: {} {}:{}:{}",
             e.message, e.location.filename, e.location.start, e.location.end
         );
+        exit(1);
     }
 
     println!("Elapsed: {:?}", instant.elapsed());
